@@ -24,9 +24,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     name: "Gym",
     color: "cat-gym",
     budgetMinutes: 90,
-    recurring: { type: "weekdays" },
-    defaultStart: 17 * 60,
-    defaultDuration: 90,
   },
   {
     id: "run",
