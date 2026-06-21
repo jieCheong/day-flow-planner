@@ -14,6 +14,8 @@ import { AppSidebar } from "@/components/dayflow/AppSidebar";
 import { OnboardingDialog } from "@/components/dayflow/OnboardingDialog";
 import { useDayflow } from "@/lib/dayflow/store";
 import { Toaster } from "@/components/ui/sonner";
+import { getUser } from "@/lib/auth";
+import { syncFromApi } from "@/lib/dayflow/sync";
 
 function NotFoundComponent() {
   return (
@@ -122,6 +124,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (getUser()) {
+      syncFromApi().catch(console.error);
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

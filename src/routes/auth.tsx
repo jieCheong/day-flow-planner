@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { signIn, signUp, getUser } from "@/lib/auth";
+import { syncFromApi } from "@/lib/dayflow/sync";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -27,7 +28,7 @@ function AuthPage() {
     if (getUser()) navigate({ to: "/" });
   }, [navigate]);
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: SubmitEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -39,6 +40,7 @@ function AuthPage() {
       } else {
         const result = await signIn(email, password);
         if (result.error) throw new Error(result.error);
+        await syncFromApi();
         toast.success("Welcome back!");
         navigate({ to: "/" });
       }
