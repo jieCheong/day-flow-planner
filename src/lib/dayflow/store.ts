@@ -266,7 +266,7 @@ export const useDayflow = create<DayflowState>()(
     }),
     {
       name: "dayflow:v1",
-      version: 3,
+      version: 4,
       migrate: (persisted: any, version) => {
         if (persisted && version < 2 && Array.isArray(persisted.categories)) {
           persisted.categories = persisted.categories.map((c: any) => {
@@ -280,6 +280,15 @@ export const useDayflow = create<DayflowState>()(
         if (persisted && version < 3) {
           persisted.prefs ??= DEFAULT_PREFS;
           persisted.goals ??= [];
+        }
+        if (persisted && version < 4 && Array.isArray(persisted.categories)) {
+          persisted.categories = persisted.categories.map((c: any) => {
+            if (c.id === "gym") {
+              const { recurring, defaultStart, defaultDuration, ...rest } = c;
+              return rest;
+            }
+            return c;
+          });
         }
         return persisted;
       },
