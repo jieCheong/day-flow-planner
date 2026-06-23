@@ -11,6 +11,7 @@ import { toISO } from "@/lib/dayflow/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { getUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,6 +30,8 @@ export const Route = createFileRoute("/")({
 function DayPage() {
   const today = useClientToday();
   const [date, setDate] = useState<string>("");
+  const currentUser = getUser();
+  const displayName = currentUser?.username || currentUser?.email?.split("@")[0] || null;
 
   // Initialize to today once the client knows today; keep in sync when day rolls
   // over only if the user is still viewing today (don't yank them away from a
@@ -55,6 +58,11 @@ function DayPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1600px] mx-auto space-y-4">
+      {displayName && (
+        <h2 className="text-xl font-semibold text-foreground">
+          Hi, {displayName}!
+        </h2>
+      )}
       <div className="flex items-center gap-2">
         <button
           onClick={() => shift(-1)}

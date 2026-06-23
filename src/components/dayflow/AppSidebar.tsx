@@ -34,14 +34,12 @@ export function AppSidebar() {
   const toggleTheme = useDayflow((s) => s.toggleTheme);
   const streak = useStreak();
   const [showOnboard, setShowOnboard] = useState(false);
-  const [email, setEmail] = useState<string | null>(null);
+  const [user, setUser] = useState(() => getUser());
 
   useEffect(() => {
-    setEmail(getUser()?.email ?? null);
-
     const onStorage = (e: StorageEvent) => {
       if (e.key === "dayflow_user") {
-        setEmail(getUser()?.email ?? null);
+        setUser(getUser());
       }
     };
     window.addEventListener("storage", onStorage);
@@ -50,7 +48,7 @@ export function AppSidebar() {
 
   const handleSignOut = () => {
     signOut();
-    setEmail(null);
+    setUser(null);
     toast.success("Signed out");
     navigate({ to: "/auth" });
   };
@@ -112,11 +110,11 @@ export function AppSidebar() {
             </p>
           </div>
 
-          {email ? (
+          {user ? (
             <button
               onClick={handleSignOut}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-sidebar-accent transition-colors"
-              title={email}
+              title={user.email}
             >
               <LogOut className="size-3.5" /> Sign out
             </button>

@@ -22,6 +22,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,7 +34,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await signUp(email, password);
+        const { error } = await signUp(email, password, username.trim() || undefined);
         if (error) throw new Error(error);
         toast.success("Account created! You can now sign in.");
         setMode("signin");
@@ -67,6 +68,16 @@ function AuthPage() {
         </div>
 
         <form onSubmit={submit} className="space-y-3">
+          {mode === "signup" && (
+            <input
+              type="text"
+              required
+              placeholder="Your name (e.g. Alex)"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm outline-none focus:ring-2 focus:ring-ring/30"
+            />
+          )}
           <input
             type="email"
             required

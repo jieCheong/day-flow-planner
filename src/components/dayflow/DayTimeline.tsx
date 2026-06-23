@@ -7,8 +7,6 @@ import { hoursLabel } from "@/lib/dayflow/utils";
 import { CATEGORY_MAP } from "@/lib/dayflow/categories";
 import {
   PX_PER_MIN,
-  TIMELINE_END,
-  TIMELINE_START,
   minutesToLabel,
 } from "@/lib/dayflow/utils";
 import type { TimeBlock } from "@/lib/dayflow/types";
@@ -21,11 +19,18 @@ interface Props {
 
 export function DayTimeline({ dateISO }: Props) {
   const categories = useDayflow((s) => s.categories);
+  const prefs = useDayflow((s) => s.prefs);
   const catMap = useMemo(() => CATEGORY_MAP(categories), [categories]);
   const blocks = useBlocksForDate(dateISO);
   const toggleBlock = useToggleBlock();
   const deleteBlock = useDayflow((s) => s.deleteBlock);
   const generateDay = useDayflow((s) => s.generateDay);
+
+  // Timeline anchored at sleep time: starts when user goes to sleep, covers 24h
+  const timelineStart = prefs.sleepTime;
+  const timelineEnd = timelineStart + 24 * 60;
+  // Blocks before sleep time (past midnight, early morning) appear at the bottom
+  const adjustMin = (m: number) => (m < timelineStart ? m + 1440 : m);
 
   const [editing, setEditing] = useState<TimeBlock | null>(null);
   const [creatingMinutes, setCreatingMinutes] = useState<number | null>(null);
@@ -39,14 +44,16 @@ export function DayTimeline({ dateISO }: Props) {
 
   const isToday = dateISO === format(new Date(), "yyyy-MM-dd");
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const nowOffset = (nowMinutes - TIMELINE_START) * PX_PER_MIN;
-  const totalHeight = (TIMELINE_END - TIMELINE_START) * PX_PER_MIN;
+  const nowAdjusted = adjustMin(nowMinutes);
+  const nowOffset = (nowAdjusted - timelineStart) * PX_PER_MIN;
+  const totalHeight = 24 * 60 * PX_PER_MIN;
 
   const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
-    const minute = TIMELINE_START + Math.round(y / PX_PER_MIN / 15) * 15;
-    setCreatingMinutes(Math.max(TIMELINE_START, Math.min(TIMELINE_END - 30, minute)));
+    const displayMin = timelineStart + Math.round(y / PX_PER_MIN / 15) * 15;
+    const clampedDisplay = Math.max(timelineStart, Math.min(timelineEnd - 60, displayMin));
+    setCreatingMinutes(clampedDisplay % 1440);
   };
 
   return (
@@ -83,29 +90,33 @@ export function DayTimeline({ dateISO }: Props) {
             onClick={handleSlotClick}
           >
             {/* Hour gridlines */}
-            {Array.from({
-              length: (TIMELINE_END - TIMELINE_START) / 60 + 1,
-            }).map((_, i) => {
-              const m = TIMELINE_START + i * 60;
+            {Array.from({ length: 25 }).map((_, i) => {
+              const m = timelineStart + i * 60;
               const top = i * 60 * PX_PER_MIN;
+              const isMidnight = m % 1440 === 0 && i > 0;
               return (
                 <div
                   key={i}
                   className="absolute left-0 right-0 flex items-center gap-3"
                   style={{ top }}
                 >
-                  <span className="w-12 shrink-0 text-[10px] font-mono text-muted-foreground/60">
-                    {minutesToLabel(m % (24 * 60))}
+                  <span className={`w-12 shrink-0 text-[10px] font-mono ${isMidnight ? "text-primary/70 font-semibold" : "text-muted-foreground/60"}`}>
+                    {minutesToLabel(m)}
                   </span>
-                  <div className="flex-1 h-px bg-border/60" />
+                  <div className={`flex-1 ${isMidnight ? "h-[2px] bg-primary/25" : "h-px bg-border/60"}`} />
+                  {isMidnight && (
+                    <span className="text-[9px] font-semibold text-primary/60 uppercase tracking-wider pr-1">
+                      midnight
+                    </span>
+                  )}
                 </div>
               );
             })}
 
             {/* "Now" indicator */}
             {isToday &&
-              nowMinutes >= TIMELINE_START &&
-              nowMinutes <= TIMELINE_END && (
+              nowAdjusted >= timelineStart &&
+              nowAdjusted <= timelineEnd && (
                 <div
                   className="absolute left-0 right-0 flex items-center gap-3 z-20 pointer-events-none"
                   style={{ top: nowOffset }}
@@ -121,15 +132,18 @@ export function DayTimeline({ dateISO }: Props) {
             {/* Blocks */}
             <div className="absolute left-16 right-0 top-0 bottom-0 pointer-events-none">
               {blocks
-                .filter(
-                  (b) =>
-                    b.endMinutes > TIMELINE_START &&
-                    b.startMinutes < TIMELINE_END,
-                )
+                .filter((b) => {
+                  const adjS = adjustMin(b.startMinutes);
+                  const adjE = b.startMinutes < timelineStart ? b.endMinutes + 1440 : b.endMinutes;
+                  return adjE > timelineStart && adjS < timelineEnd;
+                })
                 .map((b) => {
-                  const start = Math.max(b.startMinutes, TIMELINE_START);
-                  const end = Math.min(b.endMinutes, TIMELINE_END);
-                  const top = (start - TIMELINE_START) * PX_PER_MIN;
+                  const isWrapped = b.startMinutes < timelineStart;
+                  const adjStart = isWrapped ? b.startMinutes + 1440 : b.startMinutes;
+                  const adjEnd = isWrapped ? b.endMinutes + 1440 : b.endMinutes;
+                  const start = Math.max(adjStart, timelineStart);
+                  const end = Math.min(adjEnd, timelineEnd);
+                  const top = (start - timelineStart) * PX_PER_MIN;
                   const height = Math.max(28, (end - start) * PX_PER_MIN - 2);
                   const cat = catMap[b.category];
                   const missed = isMissed(b, now, dateISO);

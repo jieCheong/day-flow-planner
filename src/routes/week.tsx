@@ -11,8 +11,6 @@ import { ChevronLeft, ChevronRight, Flag, Plus } from "lucide-react";
 import { useDayflow } from "@/lib/dayflow/store";
 import { CATEGORY_MAP } from "@/lib/dayflow/categories";
 import {
-  TIMELINE_END,
-  TIMELINE_START,
   toISO,
   recurringMatches,
 } from "@/lib/dayflow/utils";
@@ -55,9 +53,14 @@ function WeekContent() {
   const categories = useDayflow((s) => s.categories);
   const blocks = useDayflow((s) => s.blocks);
   const tasks = useDayflow((s) => s.tasks);
+  const prefs = useDayflow((s) => s.prefs);
   const catMap = useMemo(() => CATEGORY_MAP(categories), [categories]);
   const [editing, setEditing] = useState<{ block: TimeBlock; date: string } | null>(null);
   const [creating, setCreating] = useState<{ date: string; start: number } | null>(null);
+
+  const timelineStart = prefs.sleepTime;
+  const timelineEnd = timelineStart + 24 * 60;
+  const adjustMin = (m: number) => (m < timelineStart ? m + 1440 : m);
 
   const weekStart = startOfWeek(addWeeks(new Date(), offset), {
     weekStartsOn: 1,
@@ -97,8 +100,6 @@ function WeekContent() {
     }
     return [...userBlocks, ...recurring];
   };
-
-  const totalH = TIMELINE_END - TIMELINE_START;
 
   return (
     <div className="p-6 lg:p-8 max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
@@ -177,15 +178,19 @@ function WeekContent() {
 
           <div className="grid grid-cols-[60px_repeat(7,1fr)] relative max-h-[calc(100vh-280px)] overflow-y-auto">
             <div className="border-r border-border">
-              {Array.from({ length: totalH / 60 + 1 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[40px] text-[10px] font-mono text-muted-foreground/60 px-2 pt-0.5 text-right"
-                >
-                  {String(((TIMELINE_START + i * 60) / 60) % 24).padStart(2, "0")}
-                  :00
-                </div>
-              ))}
+              {Array.from({ length: 25 }).map((_, i) => {
+                const m = timelineStart + i * 60;
+                const isMidnight = m % 1440 === 0 && i > 0;
+                const h = Math.floor((m / 60) % 24);
+                return (
+                  <div
+                    key={i}
+                    className={`h-[40px] text-[10px] font-mono px-2 pt-0.5 text-right ${isMidnight ? "text-primary/70 font-semibold" : "text-muted-foreground/60"}`}
+                  >
+                    {String(h).padStart(2, "0")}:00
+                  </div>
+                );
+              })}
             </div>
             {days.map((d) => {
               const items = blocksForDay(d);
@@ -194,35 +199,39 @@ function WeekContent() {
                 <div
                   key={d.toISOString()}
                   className="relative border-l border-border cursor-pointer"
-                  style={{ minHeight: (totalH / 60 + 1) * 40 }}
+                  style={{ minHeight: 25 * 40 }}
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const y = e.clientY - rect.top;
-                    const minute =
-                      TIMELINE_START + Math.round(y / 40 / 0.25) * 15;
-                    setCreating({
-                      date: iso,
-                      start: Math.max(TIMELINE_START, Math.min(TIMELINE_END - 30, minute)),
-                    });
+                    const displayMin = timelineStart + Math.round(y / 40 / 0.25) * 15;
+                    const clampedDisplay = Math.max(timelineStart, Math.min(timelineEnd - 60, displayMin));
+                    setCreating({ date: iso, start: clampedDisplay % 1440 });
                   }}
                 >
-                  {Array.from({ length: totalH / 60 + 1 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute left-0 right-0 border-t border-border/40"
-                      style={{ top: i * 40 }}
-                    />
-                  ))}
+                  {Array.from({ length: 25 }).map((_, i) => {
+                    const m = timelineStart + i * 60;
+                    const isMidnight = m % 1440 === 0 && i > 0;
+                    return (
+                      <div
+                        key={i}
+                        className={`absolute left-0 right-0 border-t ${isMidnight ? "border-primary/30 border-t-2" : "border-border/40"}`}
+                        style={{ top: i * 40 }}
+                      />
+                    );
+                  })}
                   {items
-                    .filter(
-                      (b) =>
-                        b.endMinutes > TIMELINE_START &&
-                        b.startMinutes < TIMELINE_END,
-                    )
+                    .filter((b) => {
+                      const adjS = adjustMin(b.startMinutes);
+                      const adjE = b.startMinutes < timelineStart ? b.endMinutes + 1440 : b.endMinutes;
+                      return adjE > timelineStart && adjS < timelineEnd;
+                    })
                     .map((b) => {
-                      const start = Math.max(b.startMinutes, TIMELINE_START);
-                      const end = Math.min(b.endMinutes, TIMELINE_END);
-                      const top = ((start - TIMELINE_START) / 60) * 40;
+                      const isWrapped = b.startMinutes < timelineStart;
+                      const adjStart = isWrapped ? b.startMinutes + 1440 : b.startMinutes;
+                      const adjEnd = isWrapped ? b.endMinutes + 1440 : b.endMinutes;
+                      const start = Math.max(adjStart, timelineStart);
+                      const end = Math.min(adjEnd, timelineEnd);
+                      const top = ((start - timelineStart) / 60) * 40;
                       const height = Math.max(
                         16,
                         ((end - start) / 60) * 40 - 2,

@@ -26,13 +26,22 @@ export function BlockEditor({ mode, dateISO, initial, onClose }: Props) {
 
   const [title, setTitle] = useState(initial.title ?? "");
   const [category, setCategory] = useState<CategoryId>(
-    (initial.category as CategoryId) ?? "project",
+    (initial.category as CategoryId) ?? (categories[0]?.id ?? "work"),
   );
   const [start, setStart] = useState(minutesToShort(initial.startMinutes));
-  const [end, setEnd] = useState(minutesToShort(initial.endMinutes));
+  // For blocks that cross midnight, display the wrapped time (e.g. 1500 min → "01:00")
+  const [end, setEnd] = useState(minutesToShort(initial.endMinutes % (24 * 60)));
   const [note, setNote] = useState(initial.note ?? "");
   const [completed, setCompleted] = useState<boolean>(initial.completed ?? false);
   const [fixed, setFixed] = useState<boolean>(initial.fixed ?? false);
+
+  const startParsed = parseTime(start);
+  const endParsed = parseTime(end);
+  // If end time is earlier than start, treat it as next-day (e.g. 11 PM → 1 AM)
+  const isNextDay = endParsed < startParsed;
+  const resolvedEnd = isNextDay
+    ? endParsed + 24 * 60
+    : Math.max(endParsed, startParsed + 15);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +49,8 @@ export function BlockEditor({ mode, dateISO, initial, onClose }: Props) {
       title: title.trim() || "Untitled",
       category,
       date: dateISO,
-      startMinutes: parseTime(start),
-      endMinutes: Math.max(parseTime(end), parseTime(start) + 15),
+      startMinutes: startParsed,
+      endMinutes: resolvedEnd,
       note: note.trim() || undefined,
       completed,
       fixed,
@@ -131,7 +140,14 @@ export function BlockEditor({ mode, dateISO, initial, onClose }: Props) {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">End</label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">End</label>
+              {isNextDay && (
+                <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                  +1 day
+                </span>
+              )}
+            </div>
             <input
               type="time"
               value={end}

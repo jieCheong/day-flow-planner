@@ -8,8 +8,12 @@ CREATE TABLE IF NOT EXISTS users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  username      TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migration: run this if the table already exists
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
 
 -- User preferences (one row per user)
 CREATE TABLE IF NOT EXISTS user_prefs (

@@ -13,12 +13,12 @@ export function clearToken() {
   localStorage.removeItem("dayflow_user");
 }
 
-export function getStoredUser(): { id: string; email: string } | null {
+export function getStoredUser(): { id: string; email: string; username?: string | null } | null {
   const raw = localStorage.getItem("dayflow_user");
-  return raw ? (JSON.parse(raw) as { id: string; email: string }) : null;
+  return raw ? (JSON.parse(raw) as { id: string; email: string; username?: string | null }) : null;
 }
 
-export function setStoredUser(user: { id: string; email: string }) {
+export function setStoredUser(user: { id: string; email: string; username?: string | null }) {
   localStorage.setItem("dayflow_user", JSON.stringify(user));
 }
 

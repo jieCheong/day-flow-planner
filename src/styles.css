@@ -52,6 +52,7 @@
   --color-cat-walk: var(--cat-walk);
   --color-cat-sleep: var(--cat-sleep);
   --color-cat-personal: var(--cat-personal);
+  --color-cat-work: var(--cat-work);
 }
 
 :root {
@@ -105,6 +106,7 @@
   --cat-walk: oklch(0.72 0.1 195);      /* sea teal */
   --cat-sleep: oklch(0.65 0.05 270);    /* slate violet */
   --cat-personal: oklch(0.7 0.04 260);  /* neutral gray */
+  --cat-work: oklch(0.68 0.14 280);     /* indigo */
 }
 
 .dark {
@@ -155,6 +157,7 @@
   --cat-walk: oklch(0.76 0.1 195);
   --cat-sleep: oklch(0.7 0.05 270);
   --cat-personal: oklch(0.75 0.03 260);
+  --cat-work: oklch(0.73 0.15 280);
 }
 
 @layer base {

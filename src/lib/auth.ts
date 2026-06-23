@@ -1,6 +1,6 @@
 import { api, setToken, clearToken, setStoredUser, getStoredUser } from "./api";
 
-export type AuthUser = { id: string; email: string };
+export type AuthUser = { id: string; email: string; username?: string | null };
 
 type AuthResult =
   | { user: AuthUser; token: string; error?: never }
@@ -8,10 +8,11 @@ type AuthResult =
 
 export async function signUp(
   email: string,
-  password: string
+  password: string,
+  username?: string
 ): Promise<{ error?: string }> {
   try {
-    await api.post<void>("/auth/signup", { email, password });
+    await api.post<void>("/auth/signup", { email, password, username });
     return {};
   } catch (err) {
     return { error: (err as Error).message };

@@ -10,7 +10,7 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 // POST /auth/signup
 authRoutes.post("/signup", async (c) => {
-  const { email, password } = await c.req.json<{ email: string; password: string }>();
+  const { email, password, username } = await c.req.json<{ email: string; password: string; username?: string }>();
 
   if (!email || !password) return c.json({ error: "Email and password are required" }, 400);
   if (password.length < 6) return c.json({ error: "Password must be at least 6 characters" }, 400);
@@ -19,9 +19,10 @@ authRoutes.post("/signup", async (c) => {
   if (existing) return c.json({ error: "Email already in use" }, 409);
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const trimmedUsername = username?.trim() || null;
   const [user] = await sql`
-    INSERT INTO users (email, password_hash)
-    VALUES (${email.toLowerCase()}, ${passwordHash})
+    INSERT INTO users (email, password_hash, username)
+    VALUES (${email.toLowerCase()}, ${passwordHash}, ${trimmedUsername})
     RETURNING id
   `;
 
@@ -36,7 +37,7 @@ authRoutes.post("/signin", async (c) => {
 
   if (!email || !password) return c.json({ error: "Email and password are required" }, 400);
 
-  const [user] = await sql`SELECT id, email, password_hash FROM users WHERE email = ${email.toLowerCase()}`;
+  const [user] = await sql`SELECT id, email, password_hash, username FROM users WHERE email = ${email.toLowerCase()}`;
   if (!user) return c.json({ error: "Invalid credentials" }, 401);
 
   const valid = await bcrypt.compare(password, user.password_hash as string);
@@ -49,10 +50,11 @@ authRoutes.post("/signin", async (c) => {
     .setExpirationTime("30d")
     .sign(secret);
 
-  return c.json({ token, user: { id: user.id, email: user.email } });
+  return c.json({ token, user: { id: user.id, email: user.email, username: user.username ?? null } });
 });
 
 // GET /auth/me
-authRoutes.get("/me", requireAuth, (c) => {
-  return c.json({ id: c.get("userId"), email: c.get("userEmail") });
+authRoutes.get("/me", requireAuth, async (c) => {
+  const [user] = await sql`SELECT username FROM users WHERE id = ${c.get("userId")}`;
+  return c.json({ id: c.get("userId"), email: c.get("userEmail"), username: user?.username ?? null });
 });
