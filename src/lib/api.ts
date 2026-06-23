@@ -1,24 +1,29 @@
 const BASE = import.meta.env.VITE_BACKEND_URL as string;
 
 function getToken(): string | null {
+  if (typeof window === "undefined") return null;
   return localStorage.getItem("dayflow_token");
 }
 
 export function setToken(token: string) {
+  if (typeof window === "undefined") return;
   localStorage.setItem("dayflow_token", token);
 }
 
 export function clearToken() {
+  if (typeof window === "undefined") return;
   localStorage.removeItem("dayflow_token");
   localStorage.removeItem("dayflow_user");
 }
 
 export function getStoredUser(): { id: string; email: string; username?: string | null } | null {
+  if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("dayflow_user");
   return raw ? (JSON.parse(raw) as { id: string; email: string; username?: string | null }) : null;
 }
 
 export function setStoredUser(user: { id: string; email: string; username?: string | null }) {
+  if (typeof window === "undefined") return;
   localStorage.setItem("dayflow_user", JSON.stringify(user));
 }
 
